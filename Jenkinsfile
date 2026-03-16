@@ -1,11 +1,6 @@
 pipeline {
-    agent {
-        docker {
-            image 'node:18'
-            label 'docker'   // optional
-            args '-u node'   // runs commands as the default node user
-        }
-    }
+    agent any  // instead of agent { docker { ... label 'docker' } }
+
 
    environment {
     NETLIFY_AUTH_TOKEN = credentials('NETLIFY_AUTH_TOKEN') // this ID points to Jenkins credential
