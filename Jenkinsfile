@@ -34,15 +34,15 @@ pipeline {
             }
         }
 
-        stage('Deploy to Netlify') {
+         stage('Deploy to Netlify') {
             steps {
-                sh '''
-                    echo "Installing Netlify CLI..."
-                    npm install netlify-cli
-
-                    echo "Deploying to Netlify..."
-                    npx netlify deploy --prod --dir=build --auth=$NETLIFY_AUTH_TOKEN --site=$NETLIFY_SITE_ID
-                '''
+                // Use withCredentials for extra safety
+                withCredentials([string(credentialsId: 'NETLIFY_AUTH_TOKEN', variable: 'NETLIFY_AUTH_TOKEN')]) {
+                    sh '''
+                        echo "Deploying to Netlify..."
+                        npx netlify deploy --prod --dir=build --auth=$NETLIFY_AUTH_TOKEN --site=$NETLIFY_SITE_ID
+                    '''
+                }
             }
         }
     }
