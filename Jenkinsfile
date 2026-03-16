@@ -1,0 +1,30 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Build') {
+            agent {
+                docker {
+                    image 'node:18'
+                    reuseNode true
+                }
+            }
+
+            steps {
+                sh '''
+                echo "Before build:"
+                ls -la
+
+                node --version
+                npm --version
+
+                npm install
+                npm run build
+
+                echo "After build:"
+                ls -la
+                '''
+            }
+        }
+    }
+}
