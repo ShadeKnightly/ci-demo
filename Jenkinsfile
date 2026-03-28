@@ -1,55 +1,69 @@
 pipeline {
-    agent any  // instead of agent { docker { ... label 'docker' } }
+    agent any  
 
-
-   environment {
-    NETLIFY_AUTH_TOKEN = credentials('NETLIFY_AUTH_TOKEN') // this ID points to Jenkins credential
-    NETLIFY_SITE_ID = '4f68f710-1352-4cb0-a12d-690d6731b585'               // this is public
-}
+    environment {
+        NETLIFY_AUTH_TOKEN = credentials('NETLIFY_AUTH_TOKEN')
+        NETLIFY_SITE_ID = '4f68f710-1352-4cb0-a12d-690d6731b585'
+    }
 
     stages {
-        stage('Checkout') {
+        stage('Docker') {
             steps {
-                checkout scm
+                sh 'docker build -t my-docker-image .'
             }
         }
 
         stage('Build') {
+            agent {
+                docker {
+                    image 'node:24.14.0-alpine'
+                    reuseNode true
+                }
+            }
             steps {
                 sh '''
-                    echo "Node version:"
+                    ls -la
                     node --version
-                    echo "NPM version:"
                     npm --version
-
-                    echo "Installing packages..."
                     npm install
-
-                    echo "Building app..."
                     npm run build
-
-                    echo "Contents of build folder:"
-                    ls -la build
+                    ls -la
                 '''
             }
         }
-        
+
         stage('Test') {
+            agent {
+                docker {
+                    image 'node:24.14.0-alpine'
+                    reuseNode true
+                }
+            }
             steps {
                 sh '''
-                echo "Running tests..."
-                npm test -- --watchAll=false
-                '''   
+                    test -f build/index.html
+                    npm test -- --watchAll=false
+                '''
             }
         }
 
-         stage('Deploy to Netlify') {
+        stage('AWS') {
+            agent {
+                docker {
+                    image 'amazon/aws-cli'
+                    reuseNode true
+                    args '--entrypoint=""'
+                }
+            }
+            environment {
+                AWS_S3_BUCKET = 'shade-knightly-react-app-2026'
+            }
             steps {
-                // Use withCredentials for extra safety
-                withCredentials([string(credentialsId: 'NETLIFY_AUTH_TOKEN', variable: 'NETLIFY_AUTH_TOKEN')]) {
+                withCredentials([usernamePassword(credentialsId: 'tempAWS', passwordVariable: 'AWS_SECRET_ACCESS_KEY', usernameVariable: 'AWS_ACCESS_KEY_ID')]) {
                     sh '''
-                        echo "Deploying to Netlify..."
-                        npx netlify deploy --prod --dir=build --auth=$NETLIFY_AUTH_TOKEN --site=$NETLIFY_SITE_ID
+                        aws --version
+                        aws s3 ls
+                        aws s3 sync build s3://$AWS_S3_BUCKET
                     '''
                 }
             }
